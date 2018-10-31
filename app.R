@@ -13,7 +13,7 @@ ui <- fluidPage(
 )
 
 server <- function(input, output, session) {
-  table_name <- 'pool'
+  table_name <- 'event'
   pool_img <- png::readPNG("pool.png")
   conn <- dbConnect(
     drv = RMariaDB::MariaDB(), 
