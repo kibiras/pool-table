@@ -14,7 +14,8 @@ ui <- fluidPage(theme = shinytheme("cyborg"),
   h3(textOutput("shot_number"), style="color:green"),
   plotOutput("plot1", width = "100%", height = "600px"),
   tableOutput("tbl"),
-  tags$style(type="text/css", "#plot1.recalculating { opacity: 1.0; }")
+  tags$style(type="text/css", "#plot1.recalculating { opacity: 1.0; }"),
+  tags$style(type="text/css", "#tbl.recalculating { opacity: 1.0; }")
 )
 
 server <- function(input, output, session) {
@@ -23,7 +24,7 @@ server <- function(input, output, session) {
   conn <- dbConnect(
     drv = RMariaDB::MariaDB(), 
     username = 'seb',
-    password = 'seb',
+    password = 'sebpsw',
     dbname = 'seb',
     host = '127.0.0.1',
     port = '3306'
