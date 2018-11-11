@@ -10,21 +10,22 @@ library(ggpubr)
 
 ui <- fluidPage(theme = shinytheme("cyborg"),
   align="center",
-  titlePanel("SEB pool game"),
-  h3(textOutput("shot_number"), style="color:green"),
-  plotOutput("plot1", width = "100%", height = "600px"),
+  h2(textOutput("shot_number"), style="color:green"),
+  tableOutput("stats"),
+  plotOutput("plot1", height = "700px"),
   tableOutput("tbl"),
   tags$style(type="text/css", "#plot1.recalculating { opacity: 1.0; }"),
-  tags$style(type="text/css", "#tbl.recalculating { opacity: 1.0; }")
+  tags$style(type="text/css", "#tbl.recalculating { opacity: 1.0; }"),
+  tags$style(type="text/css", "#stats.recalculating { opacity: 1.0; }")
 )
 
 server <- function(input, output, session) {
-  table_name <- 'event'
+  table_name <- 'event3'
   pool_img <- png::readPNG("pool.png")
   conn <- dbConnect(
     drv = RMariaDB::MariaDB(), 
     username = 'seb',
-    password = 'sebpsw',
+    password = 'seb',
     dbname = 'seb',
     host = '127.0.0.1',
     port = '3306'
@@ -32,8 +33,7 @@ server <- function(input, output, session) {
   
   data <- reactivePoll(1000, session,
                          checkFunc = function() {
-                          (dbGetQuery(conn, paste0('SELECT id FROM ', table_name, ' ORDER BY id DESC LIMIT 1')))
-       
+                          (dbGetQuery(conn, paste0('SELECT id FROM ', table_name, ' ORDER BY id DESC LIMIT 1'))[1,1])
                        },
                          valueFunc = function() {
                          ((dbReadTable(conn, table_name)) %>%
@@ -53,7 +53,19 @@ server <- function(input, output, session) {
     )
   })
   
+  output$stats <- renderTable({
+    data() %>%
+      filter(!is.na(combination_id)) %>%
+      select(status, combination_id) %>%
+      group_by(combination_id) %>%
+      summarise(SUCCESS = max(status, na.rm = TRUE)) %>%
+      mutate(SUCCESS = ifelse(SUCCESS == 1, "YES", ifelse(SUCCESS == 0, "NO", "N/A"))) %>%
+      mutate(combination_id = as.integer(combination_id + 1)) %>%
+      rename(SHOT_NUMBER = combination_id)
+   })
+  
   output$tbl <- renderTable({
+    # Select newest combination
     newest_combination <- max(data()$combination_id, na.rm = TRUE)
     combination_timestamp <- data() %>%
       filter(combination_id == newest_combination) %>%
@@ -66,28 +78,37 @@ server <- function(input, output, session) {
       head(25)
   })
   output$plot1 <- renderPlot({
+    # get newest combination id
     newest_combination <- max(data()$combination_id, na.rm = TRUE)
+    # get combination start timestamp
     combination_timestamp <- data() %>%
       filter(combination_id == newest_combination) %>%
       select(time) %>%
-      arrange(time)
+      arrange(time) %>%
+      head(1)
     combination_start_time <- combination_timestamp[1,1]
+    # data for game combination
     game_combination <- data() %>%
-      filter(time >= combination_start_time) 
-    
-    white_ball <- filter(game_combination, id == max(id)) %>%
+      filter(time > combination_start_time) %>%
+      filter(x <= 1 & x >= 0 & y <= 1 & y >= 0) %>%
+      arrange(time)
+    # get last white ball position
+    white_ball <- game_combination %>%
+      filter(ball_id == 0) %>%
+      filter(!is.na(x)) %>%
+      filter(id == max(id)) %>%
       select(x, y)
-    
+    # get position for other balls
     balls <- game_combination %>%
       filter(!is.na(ball_id)) %>%
       group_by(ball_id) %>%
       filter(id == max(id)) %>%
       select(x, y, ball_id)
-    
+    # get data for path
     df <- game_combination %>% 
-      filter(x != "") %>%
-      filter(is.na(ball_id))
-    
+      filter(!is.na(x)) %>%
+      filter((ball_id == 0)) 
+    # plot pool table
     ggplot() +
       annotation_custom(rasterGrob(pool_img,
                                    width = unit(1, "npc"),
@@ -96,10 +117,15 @@ server <- function(input, output, session) {
                                    xmax = 1.065,
                                    ymin = -0.23,
                                    ymax = 1.23) +
-      geom_path(data = df, aes(x =x, y = y), size = 2, color = "white") +
-      geom_point(data = white_ball, aes(x = x, y = y), size = 15, color = "white") +
+      # ball position as points
       geom_point(data = balls, aes(x = x, y = y, color = as.factor(ball_id)), size = 15, show.legend = FALSE) +
-      geom_text(data = balls, aes(x = x, y = y, label = ball_id), size = 3.5) +
+      scale_color_manual(values=c("yellow", "yellow", "blue", "red", "purple", "orange", "green", "brown", "black")) + 
+      # add text to ball position
+      geom_text(data = balls, aes(x = x, y = y, label = ball_id), size = 5) +
+      # white ball position
+      geom_point(data = white_ball, aes(x = x, y = y), size = 15, color = "white") +
+      # draw path for white ball
+      geom_path(data = df, aes(x = x, y = y), size = 2, color = "white") +
       ylim(-.10, 1.10) +
       xlim(-.10, 1.10) +
       theme_transparent() +
