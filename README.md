@@ -9,6 +9,7 @@ Web application reads information from internal MariaDB database and visualize w
 * MariaDB ODBC driver
 * R packages
 
+### Installation guide
 * Install R: https://cran.r-project.org/ 
 * Install R packages: install.packages("shiny", "DBI", "RMariaDB", "tidyverse", "grid", "png", "shinythemes", "ggpubr") from R or
 sudo su - -c "R -e \"install.packages('shiny', 'DBI', 'RMariaDB', 'tidyverse', 'grid', 'png', 'shinythemes', 'ggpubr', repos='http://cran.rstudio.com/')\""
