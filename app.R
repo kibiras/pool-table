@@ -10,13 +10,17 @@ library(ggpubr)
 
 ui <- fluidPage(theme = shinytheme("cyborg"),
   align="center",
-  h2(textOutput("shot_number"), style="color:green"),
-  tableOutput("stats"),
-  plotOutput("plot1", height = "700px"),
-  tableOutput("tbl"),
+  strong(h1(textOutput("shot_number"), style="color:green")),
+  plotOutput("plot1", height = "600px", width = "75%"),
+  splitLayout(style = "border: 1px solid silver;",
+    cellWidths = c("20%", "15%", "60%"),
+              tableOutput("stats"),
+              tableOutput("total"),
+              tableOutput("tbl")),
   tags$style(type="text/css", "#plot1.recalculating { opacity: 1.0; }"),
   tags$style(type="text/css", "#tbl.recalculating { opacity: 1.0; }"),
-  tags$style(type="text/css", "#stats.recalculating { opacity: 1.0; }")
+  tags$style(type="text/css", "#stats.recalculating { opacity: 1.0; }"),
+  tags$style(type="text/css", "#total.recalculating { opacity: 1.0; }")
 )
 
 server <- function(input, output, session) {
@@ -31,9 +35,9 @@ server <- function(input, output, session) {
     port = '3306'
   ) 
   
-  data <- reactivePoll(1000, session,
+  data <- reactivePoll(500, session,
                          checkFunc = function() {
-                          (dbGetQuery(conn, paste0('SELECT id FROM ', table_name, ' ORDER BY id DESC LIMIT 1'))[1,1])
+                          (dbGetQuery(conn, paste0('SELECT id FROM ', table_name, ' ORDER BY id DESC LIMIT 2')))
                        },
                          valueFunc = function() {
                          ((dbReadTable(conn, table_name)) %>%
@@ -46,12 +50,12 @@ server <- function(input, output, session) {
   output$shot_number <- renderText({
     combination <- max(data()$combination_id, na.rm = TRUE) 
     case_when(
-      combination == 0 ~ "FIRST SHOT",
-      combination == 1 ~ "SECOND SHOT",
-      combination == 2 ~ "THIRD SHOT",
-      combination == 3 ~ "FOURTH SHOT",
-      combination == 4 ~ "FIFTH SHOT",
-      combination == 5 ~ "SIXTH SHOT"
+      combination == 0 ~ "1ST COMBINATION",
+      combination == 1 ~ "2ND COMBINATION",
+      combination == 2 ~ "3RD COMBINATION",
+      combination == 3 ~ "4TH COMBINATION",
+      combination == 4 ~ "5TH COMBINATION",
+      combination == 5 ~ "6TH COMBINATION"
     )
   })
   
@@ -60,11 +64,16 @@ server <- function(input, output, session) {
       filter(!is.na(combination_id)) %>%
       select(status, combination_id) %>%
       group_by(combination_id) %>%
-      summarise(SUCCESS = max(status, na.rm = TRUE)) %>%
-      mutate(SUCCESS = ifelse(SUCCESS == 1, "YES", ifelse(SUCCESS == 0, "NO", "N/A"))) %>%
+      summarise(sucess = max(status, na.rm = TRUE)) %>%
+      mutate(sucess = ifelse(sucess == 1, "YES", ifelse(sucess == 0, "NO", "N/A"))) %>%
       mutate(combination_id = as.integer(as.integer(combination_id) + 1)) %>%
-      rename(SHOT_NUMBER = combination_id)
+      rename(combination_number = combination_id)
    })
+  
+  output$total <- renderTable({
+    data() %>%
+      summarise(current_game = as.integer(max(game_id, na.rm = TRUE)), events_per_game = n())
+  })
   
   output$tbl <- renderTable({
     # Select newest combination
@@ -72,12 +81,13 @@ server <- function(input, output, session) {
     combination_timestamp <- data() %>%
       filter(combination_id == newest_combination) %>%
       select(time) %>%
-      arrange(time)
+      arrange(time) %>%
+      head(1)
     combination_start_time <- combination_timestamp[1,1]
     data() %>%
       filter(time >= combination_start_time) %>%
       arrange(desc(id)) %>%
-      head(25)
+      head(6)
   })
   output$plot1 <- renderPlot({
     # get newest combination id
