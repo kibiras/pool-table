@@ -1,7 +1,7 @@
 library(shiny)
-library(DBI)
 library(RMariaDB)
-library(tidyverse)
+library(dplyr)
+library(magrittr)
 library(grid)
 library(DBI)
 library(png)
@@ -84,9 +84,9 @@ server <- function(input, output, session) {
     newest_combination <- max(data()$combination_id, na.rm = TRUE)
     # get combination start timestamp
     combination_timestamp <- data() %>%
-      filter(combination_id == newest_combination) %>%
+      filter(combination_id == newest_combination & name == "combinationStart") %>%
       select(time) %>%
-      arrange(time) %>%
+      arrange(desc(time)) %>%
       head(1)
     combination_start_time <- combination_timestamp[1,1]
     # data for game combination
@@ -102,32 +102,34 @@ server <- function(input, output, session) {
       select(x, y)
     # get position for other balls
     balls <- game_combination %>%
-      filter(!is.na(ball_id)) %>%
+      filter(!is.na(ball_id) & ball_id != 0) %>%
       group_by(ball_id) %>%
       filter(id == max(id)) %>%
       select(x, y, ball_id)
     # get data for path
     df <- game_combination %>% 
+      # filter for specific events?
       filter(!is.na(x)) %>%
-      filter((ball_id == 0)) 
+      filter((ball_id == 0 | is.na(ball_id))) %>%
+      arrange(time)
     # plot pool table
     ggplot() +
       annotation_custom(rasterGrob(pool_img,
                                    width = unit(1, "npc"),
                                    height = unit(1,"npc")),
-                                   xmin = -0.065,
-                                   xmax = 1.065,
-                                   ymin = -0.23,
-                                   ymax = 1.23) +
+                                   xmin = -0.09,
+                                   xmax = 1.09,
+                                   ymin = -0.29,
+                                   ymax = 1.29) +
       # ball position as points
       geom_point(data = balls, aes(x = x, y = y, color = as.factor(ball_id)), size = 15, show.legend = FALSE) +
-      scale_color_manual(values=c("yellow", "yellow", "blue", "red", "purple", "orange", "green", "brown", "black")) + 
+      scale_color_manual(values=c("yellow",  "purple")) + 
       # add text to ball position
       geom_text(data = balls, aes(x = x, y = y, label = ball_id), size = 5) +
       # white ball position
       geom_point(data = white_ball, aes(x = x, y = y), size = 15, color = "white") +
       # draw path for white ball
-      geom_path(data = df, aes(x = x, y = y), size = 0.5, linetype = 2, color = "grey") +
+      geom_path(data = df, aes(x = x, y = y), size = 0.5, linetype = 5, color = "grey") +
       ylim(-.10, 1.10) +
       xlim(-.10, 1.10) +
       theme_transparent() +
