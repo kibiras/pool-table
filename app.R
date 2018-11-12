@@ -39,7 +39,7 @@ server <- function(input, output, session) {
                          ((dbReadTable(conn, table_name)) %>%
                            filter(game_id == dbGetQuery(conn, paste0('SELECT MAX(game_id) from ', table_name))[1,1]) %>%
                            mutate(x = 1 - x, y = 1 - y) %>%  
-                           arrange(time))
+                           arrange(id))
                        }
   )
   
@@ -111,7 +111,7 @@ server <- function(input, output, session) {
       # filter for specific events?
       filter(!is.na(x)) %>%
       filter((ball_id == 0 | is.na(ball_id))) %>%
-      arrange(time)
+      arrange(time, id)
     # plot pool table
     ggplot() +
       annotation_custom(rasterGrob(pool_img,
