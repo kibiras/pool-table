@@ -20,7 +20,7 @@ ui <- fluidPage(theme = shinytheme("cyborg"),
 )
 
 server <- function(input, output, session) {
-  table_name <- 'event3'
+  table_name <- 'event'
   pool_img <- png::readPNG("pool.png")
   conn <- dbConnect(
     drv = RMariaDB::MariaDB(), 
@@ -37,7 +37,9 @@ server <- function(input, output, session) {
                        },
                          valueFunc = function() {
                          ((dbReadTable(conn, table_name)) %>%
-                           filter(game_id == dbGetQuery(conn, paste0('SELECT MAX(game_id) from ', table_name))[1,1]))
+                           filter(game_id == dbGetQuery(conn, paste0('SELECT MAX(game_id) from ', table_name))[1,1]) %>%
+                           mutate(x = 1 - x, y = 1 - y) %>%  
+                           arrange(time))
                        }
   )
   
@@ -60,7 +62,7 @@ server <- function(input, output, session) {
       group_by(combination_id) %>%
       summarise(SUCCESS = max(status, na.rm = TRUE)) %>%
       mutate(SUCCESS = ifelse(SUCCESS == 1, "YES", ifelse(SUCCESS == 0, "NO", "N/A"))) %>%
-      mutate(combination_id = as.integer(combination_id + 1)) %>%
+      mutate(combination_id = as.integer(as.integer(combination_id) + 1)) %>%
       rename(SHOT_NUMBER = combination_id)
    })
   
@@ -94,7 +96,7 @@ server <- function(input, output, session) {
       arrange(time)
     # get last white ball position
     white_ball <- game_combination %>%
-      filter(ball_id == 0) %>%
+      filter(ball_id == 0 | is.na(ball_id) ) %>%
       filter(!is.na(x)) %>%
       filter(id == max(id)) %>%
       select(x, y)
@@ -125,7 +127,7 @@ server <- function(input, output, session) {
       # white ball position
       geom_point(data = white_ball, aes(x = x, y = y), size = 15, color = "white") +
       # draw path for white ball
-      geom_path(data = df, aes(x = x, y = y), size = 2, color = "white") +
+      geom_path(data = df, aes(x = x, y = y), size = 0.5, linetype = 2, color = "grey") +
       ylim(-.10, 1.10) +
       xlim(-.10, 1.10) +
       theme_transparent() +
