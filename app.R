@@ -42,7 +42,7 @@ server <- function(input, output, session) {
                          valueFunc = function() {
                          ((dbReadTable(conn, table_name)) %>%
                            filter(game_id == dbGetQuery(conn, paste0('SELECT game_id from ', table_name, ' ORDER BY time DESC LIMIT 1'))[1,1]) %>%
-                           mutate(x = 1 - x, y = 1 - y)) 
+                           mutate(x = x, y = 1 - y)) 
                            # arrange(id))
                        }
   )
@@ -102,12 +102,12 @@ server <- function(input, output, session) {
     combination_start_time <- combination_timestamp[1,1]
     # data for game combination
     game_combination <- data() %>%
-      filter(time > combination_start_time) %>%
-      filter(x <= 1 & x >= 0 & y <= 1 & y >= 0) 
+      filter(time > combination_start_time) 
+      # filter(x <= 1 & x >= 0 & y <= 1 & y >= 0) 
       # arrange(id)
     # get last white ball position
     white_ball <- game_combination %>%
-      filter(ball_id == 0 | is.na(ball_id) ) %>%
+      filter(ball_id == 0) %>%
       filter(!is.na(x)) %>%
       filter(time == max(time)) %>%
       select(x, y) %>%
@@ -122,7 +122,7 @@ server <- function(input, output, session) {
     df <- game_combination %>% 
       # filter for specific events?
       filter(!is.na(x)) %>%
-      filter((ball_id == 0 | is.na(ball_id))) %>%
+      filter((ball_id == 0)) %>%
       arrange(time, id)
     # plot pool table
     ggplot() +
@@ -135,15 +135,15 @@ server <- function(input, output, session) {
                                    ymax = 1.29) +
       # ball position as points
       geom_point(data = balls, aes(x = x, y = y, color = as.factor(ball_id)), size = 15, show.legend = FALSE) +
-      scale_color_manual(values=c("yellow",  "purple", "grey", "grey")) + 
+      scale_color_manual(values=c("lightblue", "blue", "blue", "blue", "blue")) + 
       # add text to ball position
       geom_text(data = balls, aes(x = x, y = y, label = ball_id), size = 5) +
       # white ball position
       geom_point(data = white_ball, aes(x = x, y = y), size = 15, color = "white") +
       # draw path for white ball
-      geom_path(data = df, aes(x = x, y = y), size = 0.5, linetype = 5, color = "grey") +
-      ylim(-.10, 1.10) +
-      xlim(-.10, 1.10) +
+      geom_point(data = df, aes(x = x, y = y), size = 2, linetype = 2, color = "blue") +
+      ylim(0, 1) +
+      xlim(0, 1) +
       theme_transparent() +
       theme(plot.background = element_rect(fill = "black"))
   })
