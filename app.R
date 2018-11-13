@@ -12,7 +12,7 @@ ui <- fluidPage(theme = shinytheme("cyborg"),
   align="center",
   strong(h1(textOutput("shot_number"), style="color:green")),
   plotOutput("plot1", height = "600px", width = "75%"),
-  splitLayout(style = "border: 1px solid silver;",
+  splitLayout(style = "border: 2px solid green;",
     cellWidths = c("20%", "20%", "60%"),
               tableOutput("stats"),
               tableOutput("total"),
@@ -133,7 +133,7 @@ server <- function(input, output, session) {
                                    ymax = 1.29) +
       # ball position as points
       geom_point(data = balls, aes(x = x, y = y, color = as.factor(ball_id)), size = 15, show.legend = FALSE) +
-      scale_color_manual(values=c("yellow",  "purple")) + 
+      scale_color_manual(values=c("yellow",  "purple", "grey", "grey")) + 
       # add text to ball position
       geom_text(data = balls, aes(x = x, y = y, label = ball_id), size = 5) +
       # white ball position
