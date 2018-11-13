@@ -24,7 +24,7 @@ ui <- fluidPage(theme = shinytheme("cyborg"),
 )
 
 server <- function(input, output, session) {
-  table_name <- 'event3'
+  table_name <- 'event'
   pool_img <- png::readPNG("pool.png")
   conn <- dbConnect(
     drv = RMariaDB::MariaDB(), 
