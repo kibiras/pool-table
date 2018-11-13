@@ -24,7 +24,7 @@ ui <- fluidPage(theme = shinytheme("cyborg"),
 )
 
 server <- function(input, output, session) {
-  table_name <- 'event'
+  table_name <- 'event3'
   pool_img <- png::readPNG("pool.png")
   conn <- dbConnect(
     drv = RMariaDB::MariaDB(), 
@@ -41,9 +41,9 @@ server <- function(input, output, session) {
                        },
                          valueFunc = function() {
                          ((dbReadTable(conn, table_name)) %>%
-                           filter(game_id == dbGetQuery(conn, paste0('SELECT MAX(game_id) from ', table_name))[1,1]) %>%
-                           mutate(x = 1 - x, y = 1 - y) %>%  
-                           arrange(id))
+                           filter(game_id == dbGetQuery(conn, paste0('SELECT game_id from ', table_name, ' ORDER BY time DESC LIMIT 1'))[1,1]) %>%
+                           mutate(x = 1 - x, y = 1 - y)) 
+                           # arrange(id))
                        }
   )
   
@@ -61,18 +61,19 @@ server <- function(input, output, session) {
   
   output$stats <- renderTable({
     data() %>%
-      filter(!is.na(combination_id)) %>%
+      filter(!is.na(combination_id) & name %in% c("combinationEnd", "combinationStart")) %>%
       select(status, combination_id) %>%
       group_by(combination_id) %>%
-      summarise(sucess = max(status, na.rm = TRUE)) %>%
-      mutate(sucess = ifelse(sucess == 1, "YES", ifelse(sucess == 0, "NO", "N/A"))) %>%
+      summarise(success = max(status, na.rm = TRUE)) %>%
+      mutate(success = ifelse(success == 1, "YES", ifelse(success == 0, "NO", "N/A"))) %>%
       mutate(combination_id = as.integer(as.integer(combination_id) + 1)) %>%
       rename(combination_number = combination_id)
    })
   
   output$total <- renderTable({
     data() %>%
-      summarise(current_game = as.integer(max(game_id, na.rm = TRUE)), events_per_game = n())
+      summarise(current_game = as.integer(max(game_id, na.rm = TRUE)), events_per_game = n()) %>%
+      mutate(total_events = as.integer(dbGetQuery(conn, paste0('SELECT count(*) FROM ', table_name))[1,1]))
   })
   
   output$tbl <- renderTable({
@@ -102,21 +103,22 @@ server <- function(input, output, session) {
     # data for game combination
     game_combination <- data() %>%
       filter(time > combination_start_time) %>%
-      filter(x <= 1 & x >= 0 & y <= 1 & y >= 0) %>%
-      arrange(time)
+      filter(x <= 1 & x >= 0 & y <= 1 & y >= 0) 
+      # arrange(id)
     # get last white ball position
     white_ball <- game_combination %>%
       filter(ball_id == 0 | is.na(ball_id) ) %>%
       filter(!is.na(x)) %>%
-      filter(id == max(id)) %>%
-      select(x, y)
+      filter(time == max(time)) %>%
+      select(x, y) %>%
+      head(1)
     # get position for other balls
     balls <- game_combination %>%
       filter(!is.na(ball_id) & ball_id != 0) %>%
       group_by(ball_id) %>%
       filter(id == max(id)) %>%
       select(x, y, ball_id)
-    # get data for path
+    # get data for white ball path
     df <- game_combination %>% 
       # filter for specific events?
       filter(!is.na(x)) %>%
